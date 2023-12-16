@@ -1,0 +1,6 @@
+tensorflow
+Flask
+sqlalchemy
+numpy
+pymysql
+gunicorn
