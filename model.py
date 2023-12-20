@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
-
 Base = declarative_base()
-
 class Recipe(Base):
     __tablename__ = 'recipes'
     
@@ -18,10 +16,8 @@ class Recipe(Base):
     description = Column(Text)
     ingredients = Column(Text)
     n_ingredients = Column(Integer)
-
 class UserRecipeRating(Base):
     __tablename__ = 'user_recipe_ratings'
-
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(255))
     recipe_id = Column(Integer, ForeignKey('recipes.id'))

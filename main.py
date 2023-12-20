@@ -6,11 +6,10 @@ from sqlalchemy import select, func, and_
 from model import Recipe, UserRecipeRating
 from filtering import predict as predictable
 from filtering import ranking as ranked
+from urllib.parse import quote, unquote
 import os
 from datetime import datetime
-
 app = Flask(__name__)
-
 engine_str = (
     "mysql+pymysql://{user}:{password}@{server}/{database}".format(
         user="root",
@@ -19,17 +18,13 @@ engine_str = (
         database="capstone",
     )
 )
-
 engine = sa.create_engine(engine_str)
 Session = sessionmaker(bind=engine)
-
 with open("clean_recipes.json") as f:
     recipes = json.load(f)
-
 @app.route('/', methods=['GET'])
 def test():
     return 'Put URL'
-
 @app.route('/api/rating', methods = ['POST'])
 def post_rating():
     try:
@@ -57,7 +52,17 @@ def post_rating():
     except Exception as e:
         print("Error:", e)
         return {'error': f'Failed to fetch data from the databases. Error details: {str(e)}'}, 500
-
+@app.route("/api/search/<path:encoded_name>", methods=["GET"])
+def get_search_recipe(encoded_name):
+    try:
+        session = Session()
+        decoded_name = unquote(encoded_name)
+        results = session.query(Recipe.id, Recipe.name).filter(Recipe.name.like(f'%{decoded_name}%')).limit(10).all()
+        recipes_list = [{'id': result.id, 'name': result.name} for result in results]
+        return jsonify(recipes_list)
+    except Exception as e:
+        print("Error:", e)
+        return {'error': f'Failed to fetch data from the databases. Error details: {str(e)}'}, 500
 @app.route("/api/recipes", methods=["GET"])
 def get_recipes():
     try:
@@ -69,14 +74,12 @@ def get_recipes():
     except Exception as e:
         print("Error:", e)
         return {'error': f'Failed to fetch data from the databases. Error details: {str(e)}'}, 500
-
 @app.route("/api/predict", methods=["POST"])
 def get_predict():
     try:
         data = request.get_json()
         filtered = predictable(list(data["ingres"]), recipes)
         prediction = ranked(data["user_id"], filtered)
-        
         extracted_values = [int(item[0]) for item in prediction]
         results_from_database = search_database_by_ids(extracted_values)
         return results_from_database
@@ -99,7 +102,6 @@ def search_database_by_ids(ids):
     except Exception as e:
         print("Unexpected error:", e)
         return {'error': f'Failed to fetch data from the databases. Error details: {str(e)}'}, 500
-
 @app.route("/api/recipe/rating/<int:recipe_id>", methods=["GET"])
 def get_recipe_with_ratings(recipe_id):
     try:
@@ -128,6 +130,5 @@ def get_recipe_with_ratings(recipe_id):
     except Exception as e:
         print("Error:", e)
         return {'error': f'Failed to fetch data from the databases. Error details: {str(e)}'}, 500
-
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
